@@ -12,7 +12,6 @@ from subprocess import run as _run, PIPE as _PIPE, STDOUT as _STDOUT
 from os.path import basename as _basename
 from re import match as _match
 from threading import Lock as _Lock
-import shlex
 
 from tests.fpga_drivers import FpgaDriverBase as _FpgaDriverBase
 
