@@ -7,7 +7,7 @@ https://opae.github.io/latest/docs/fpga_api/prog_guide/readme.html
 """
 from ctypes import (
     cdll as _cdll, POINTER as _POINTER, byref as _byref, c_uint32 as _c_uint32,
-    c_uint64 as _c_uint64, c_int as _c_int, c_void_p as _c_void_p), c_int8 as _c_int8
+    c_uint64 as _c_uint64, c_int as _c_int, c_void_p as _c_void_p, c_int8 as _c_int8)
 from subprocess import run as _run, PIPE as _PIPE, STDOUT as _STDOUT
 from os.path import basename as _basename
 from re import match as _match
@@ -64,11 +64,12 @@ class FpgaDriver(_FpgaDriverBase):
             fpga_image (str): FPGA image.
         """
         # Get FPGA Boards Info
-        pci_info = _run("lspci | grep accel | cut -d':' -f 1 | tail -n %d" % self._fpga_slot_id, shell=True,
+        pci_info = _run("lspci | grep accel", shell=True,
             stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
         if pci_info.returncode:
             raise RuntimeError(pci_info.stdout)
-        pci_slot = pci_info.stdout.strip()
+        pci_info = pci_info.stdout.strip().split('\n')
+        pci_slot = _match(r'([^:]+):.*', pci_info[self._fpga_slot_id]).group(1)
         # Prog FPGA Board
         program_fpga = _run('fpgaconf -B 0x%s %s' % (pci_slot, fpga_image), shell=True,
             stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
@@ -85,30 +86,28 @@ class FpgaDriver(_FpgaDriverBase):
         """
         Initialize FPGA handle with driver library.
         """
-        fpga_properties = None
+        fpga_properties = _c_void_p()
         fpga_get_properties = self._fpga_library.fpgaGetProperties
-        fpga_get_properties.argtypes = (_c_void_p, _POINTER((_c_void_p))
+        fpga_get_properties.argtypes = (_c_void_p, _POINTER(_c_void_p))
         fpga_get_properties.restype = _c_int
         if fpga_get_properties(None, _byref(fpga_properties)):
-            raise RuntimeError(
-                "Unable to create properties object")
+            raise RuntimeError("Unable to create properties object")
         print('Created properties object')
 
         fpga_properties_set_object_type = self._fpga_library.fpgaPropertiesSetObjectType
         fpga_get_properties.argtypes = (_c_void_p, _c_int)
         fpga_get_properties.restype = _c_int
         if fpga_properties_set_object_type(fpga_properties, 1):
-            raise RuntimeError(
-                "Unable to set object type")
+            raise RuntimeError("Unable to set object type")
         print('Set object type')
 
         fpga_properties_set_guid = self._fpga_library.fpgaPropertiesSetGUID
         fpga_properties_set_guid.argtypes = (_c_void_p, _c_int8 * 16)
         fpga_properties_set_guid.restype = _c_int
         guid = uuid.UUID('{850ADCC2-6CEB-4B22-9722-D43375B61C66}')
-        if fpga_properties_set_guid(fpga_properties, guid.bytes):
-            raise RuntimeError(
-                "Unable to set GUID")
+        c_guid = (_c_int8*16)(*list(guid.bytes))
+        if fpga_properties_set_guid(fpga_properties, c_guid):
+            raise RuntimeError("Unable to set GUID")
         print('Set GUID')
 
     def _get_read_register_callback(self):

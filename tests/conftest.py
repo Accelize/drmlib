@@ -432,16 +432,17 @@ class RefDesign:
             return None
         filename = join(self._path, self.image_files[hdk_version])
         ext = splitext(filename)[1]
-        try:
-            if ext == '.json':
-                with open(filename, 'rt') as fp:
-                    return load(fp)['FpgaImageGlobalId']
-            elif ext == '.awsxclbin':
-                return self.image_files[hdk_version]
-                with open(filename, 'rb') as fp:
-                    return search(r'(agfi-[0-9a-fA-F]+)', str(fp.read())).group(1)
-        except Exception as e:
-            raise Exception('No FPGA image found for %s: %s' % (hdk_version, str(e)))
+        if ext == '.json':
+            with open(filename, 'rt') as fp:
+                return load(fp)['FpgaImageGlobalId']
+        elif ext == '.awsxclbin':
+            return self.image_files[hdk_version]
+            with open(filename, 'rb') as fp:
+                return search(r'(agfi-[0-9a-fA-F]+)', str(fp.read())).group(1)
+        elif ext == '.gbs':
+            return self.image_files[hdk_version]
+        else:
+            raise RuntimeError('Unsupported fpga image file extension: %s' % ext)
 
 
 # Pytest Fixtures

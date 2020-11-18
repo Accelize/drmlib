@@ -15,7 +15,7 @@ from contextlib import contextmanager
 from ctypes import c_uint32 as _c_uint32, byref as _byref
 from importlib import import_module as _import_module
 from os import fsdecode as _fsdecode
-from os.path import realpath as _realpath
+from os.path import realpath as _realpath, basename as _basename
 
 __all__ = ['get_driver', 'FpgaDriverBase']
 
@@ -170,7 +170,7 @@ class FpgaDriverBase:
         else:
             self._fpga_image = fpga_image
 
-        print('Programming FPGA on slot #%d with FPGA image %s' % (self._fpga_slot_id, fpga_image))
+        print('Programming FPGA on slot #%d with FPGA image %s' % (self._fpga_slot_id, _basename(fpga_image)))
         with self._augment_exception('program'):
             return self._program_fpga(fpga_image)
 
