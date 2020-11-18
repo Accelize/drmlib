@@ -1,17 +1,18 @@
 # coding=utf-8
 """
-AWS F1 driver for Accelize DRM Python library
+Intel OPAE driver for Accelize DRM Python library
 
-Requires "libfpga_mgmt" library from AWS FPGA SDK:
-https://github.com/aws/aws-fpga/tree/master/sdk
+Requires "libopae-c" library from Intel OPAE-C:
+https://opae.github.io/latest/docs/fpga_api/prog_guide/readme.html
 """
 from ctypes import (
     cdll as _cdll, POINTER as _POINTER, byref as _byref, c_uint32 as _c_uint32,
-    c_uint64 as _c_uint64, c_int as _c_int)
+    c_uint64 as _c_uint64, c_int as _c_int, c_void_p as _c_void_p)
 from subprocess import run as _run, PIPE as _PIPE, STDOUT as _STDOUT
 from os.path import basename as _basename
 from re import match as _match
 from threading import Lock as _Lock
+import shlex
 
 from tests.fpga_drivers import FpgaDriverBase as _FpgaDriverBase
 
@@ -39,13 +40,7 @@ class FpgaDriver(_FpgaDriverBase):
             ctypes.CDLL: FPGA driver.
         """
         # Load AWS FPGA library
-        fpga_library = _cdll.LoadLibrary("libfpga_mgmt.so")
-
-        fpga_pci_init = fpga_library.fpga_pci_init
-        fpga_pci_init.restype = _c_int  # return code
-        if fpga_pci_init():
-            raise RuntimeError('Unable to initialize the "fpga_pci" library')
-
+        fpga_library = _cdll.LoadLibrary("libopae-c.so")
         return fpga_library
 
     @staticmethod
@@ -59,11 +54,7 @@ class FpgaDriver(_FpgaDriverBase):
         """
         Clear FPGA
         """
-        clear_fpga = _run(
-            ['fpga-clear-local-image', '-S', str(self._fpga_slot_id)],
-            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
-        if clear_fpga.returncode:
-            raise RuntimeError(clear_fpga.stdout)
+        pass
 
     def _program_fpga(self, fpga_image):
         """
@@ -72,49 +63,36 @@ class FpgaDriver(_FpgaDriverBase):
         Args:
             fpga_image (str): FPGA image.
         """
-        load_image = _run(
-            ['fpga-load-local-image', '-S', str(self._fpga_slot_id),
-             '-I', fpga_image],
+        # Get FPGA Boards Info
+        pci_info = _run("lspci | grep accel | cut -d':' -f 1 | tail -n %d" % self._fpga_slot_id, shell=True,
             stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
-        if load_image.returncode:
-            raise RuntimeError(load_image.stdout)
+        if pci_info.returncode:
+            raise RuntimeError(pci_info.stdout)
+        pci_slot = pci_info.stdout.strip()
+        # Prog FPGA Board
+        program_fpga = _run('fpgaconf -B 0x%s %s' % (pci_slot, fpga_image), shell=True,
+            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
+        if program_fpga.returncode:
+            raise RuntimeError(program_fpga.stdout)
 
     def _reset_fpga(self):
         """
         Reset FPGA including FPGA image.
         """
-        reset_image = _run(
-            ['fpga-clear-local-image', '-S', str(self._fpga_slot_id),
-             '-H'],
-            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
-        if reset_image.returncode:
-            raise RuntimeError(reset_image.stdout)
+        pass
 
     def _init_fpga(self):
         """
         Initialize FPGA handle with driver library.
         """
-        # Set FPGA handle to default value
-        self._fpga_handle = _c_int(-1)  # PCI_BAR_HANDLE_INIT
-
-        # Attach FPGA
-        fpga_pci_attach = self._fpga_library.fpga_pci_attach
-        fpga_pci_attach.restype = _c_int  # return code
-        fpga_pci_attach.argtypes = (
-            _c_int,  # slot_id
-            _c_int,  # pf_id
-            _c_int,  # bar_id
-            _c_uint32,  # flags
-            _POINTER(_c_int)  # handle
-        )
-
-        if fpga_pci_attach(self._fpga_slot_id,
-                           0,  # FPGA_APP_PF
-                           0,  # APP_PF_BAR0
-                           0, _byref(self._fpga_handle)):
+        self._fpga_properties = None
+        fpga_get_properties = self._fpga_library.fpgaGetProperties
+        fpga_get_properties.argtypes = (_c_void_p, _c_void_p)
+        fpga_get_properties.restype = _c_int
+        if fpga_get_properties(None, self._fpga_properties):
             raise RuntimeError(
-                "Unable to attach to the AFI on slot ID %s" %
-                self._fpga_slot_id)
+                "Unable to creating properties object")
+        print('Created properties object')
 
     def _get_read_register_callback(self):
         """
@@ -123,6 +101,7 @@ class FpgaDriver(_FpgaDriverBase):
         Returns:
             function: Read register callback
         """
+        '''
         fpga_pci_peek = self._fpga_library.fpga_pci_peek
         fpga_pci_peek.restype = _c_int  # return code
         fpga_pci_peek.argtypes = (
@@ -131,6 +110,7 @@ class FpgaDriver(_FpgaDriverBase):
             _POINTER(_c_uint32)  # value
         )
         self._fpga_read_register = fpga_pci_peek
+        '''
 
         def read_register(register_offset, returned_data, driver=self):
             """
@@ -142,11 +122,14 @@ class FpgaDriver(_FpgaDriverBase):
                 driver (accelize_drm.fpga_drivers._aws_f1.FpgaDriver):
                     Keep a reference to driver.
             """
+            '''
             with driver._fpga_read_register_lock():
                 return driver._fpga_read_register(
                     driver._fpga_handle,
                     driver._drm_ctrl_base_addr + register_offset,
                     returned_data)
+            '''
+            return -1
 
         return read_register
 
@@ -157,6 +140,7 @@ class FpgaDriver(_FpgaDriverBase):
         Returns:
             function: Write register callback
         """
+        '''
         fpga_pci_poke = self._fpga_library.fpga_pci_poke
         fpga_pci_poke.restype = _c_int  # return code
         fpga_pci_poke.argtypes = (
@@ -165,7 +149,7 @@ class FpgaDriver(_FpgaDriverBase):
             _c_uint32  # value
         )
         self._fpga_write_register = fpga_pci_poke
-
+        '''
         def write_register(register_offset, data_to_write, driver=self):
             """
             Write register.
@@ -176,10 +160,13 @@ class FpgaDriver(_FpgaDriverBase):
                 driver (accelize_drm.fpga_drivers._aws_f1.FpgaDriver):
                     Keep a reference to driver.
             """
+            '''
             with driver._fpga_write_register_lock():
                 return driver._fpga_write_register(
                     driver._fpga_handle,
                     driver._drm_ctrl_base_addr + register_offset,
                     data_to_write)
+            '''
+            pass
 
         return write_register
