@@ -78,6 +78,7 @@ class FpgaDriverBase:
         self._read_register_callback = self._get_read_register_callback()
         self._write_register_callback = self._get_write_register_callback()
 
+
     @property
     def fpga_image(self):
         """
