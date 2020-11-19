@@ -49,15 +49,29 @@ class FpgaDriver(_FpgaDriverBase):
         Get a lock on the FPGA driver
         """
         return _Lock
-    """
+
     def __del__(self):
-        fpga_properties = _c_void_p()
+        # Unmap MMIO space
+        fpga_unmap_mmio = self._fpga_library.fpgaUnmapMMIO
+        fpga_unmap_mmio.argtypes = (_c_void_p, _c_uint32)
+        fpga_unmap_mmio.restype = _c_int
+        if fpga_unmap_mmio(self._fpga_handle, 0):
+            raise RuntimeError("Unable to unmap MMIO space")
+
+        # Release accelerator
+        fpga_close = self._fpga_library.fpgaClose
+        fpga_close.argtypes = (_c_void_p)
+        fpga_close.restype = _c_int
+        if fpga_close(self._fpga_handle):
+            raise RuntimeError("Unable to close AFC")
+
+        # Destroy properties object
         fpga_destroy_properties = self._fpga_library.fpgaDestroyProperties
-        fpga_destroy_properties.argtypes = (_c_void_p, _POINTER(_c_void_p))
+        fpga_destroy_properties.argtypes = (_POINTER(_c_void_p))
         fpga_destroy_properties.restype = _c_int
-        if fpga_destroy_properties(None, _byref(fpga_properties)):
-            raise RuntimeError("Unable to create properties object")
-    """
+        if fpga_destroy_properties(_byref(self._fpga_properties)):
+            raise RuntimeError("Unable to destroy properties object")
+
     def _clear_fpga(self):
         """
         Clear FPGA
@@ -100,17 +114,18 @@ class FpgaDriver(_FpgaDriverBase):
         Initialize FPGA handle with driver library.
         """
         self._fpga_handle = _c_void_p(None)
-        fpga_properties = _c_void_p(None)
+        self._fpga_properties = _c_void_p(None)
+
         fpga_get_properties = self._fpga_library.fpgaGetProperties
         fpga_get_properties.argtypes = (_c_void_p, _POINTER(_c_void_p))
         fpga_get_properties.restype = _c_int
-        if fpga_get_properties(None, _byref(fpga_properties)):
+        if fpga_get_properties(None, _byref(self._fpga_properties)):
             raise RuntimeError("Unable to create properties object")
 
         fpga_properties_set_object_type = self._fpga_library.fpgaPropertiesSetObjectType
-        fpga_get_properties.argtypes = (_c_void_p, _c_int)
-        fpga_get_properties.restype = _c_int
-        if fpga_properties_set_object_type(fpga_properties, 1):
+        fpga_properties_set_object_type.argtypes = (_c_void_p, _c_int)
+        fpga_properties_set_object_type.restype = _c_int
+        if fpga_properties_set_object_type(self._fpga_properties, 1):
             raise RuntimeError("Unable to set object type")
 
         fpga_properties_set_guid = self._fpga_library.fpgaPropertiesSetGUID
@@ -118,7 +133,7 @@ class FpgaDriver(_FpgaDriverBase):
         fpga_properties_set_guid.restype = _c_int
         guid = uuid.UUID('{850ADCC2-6CEB-4B22-9722-D43375B61C66}')
         c_guid = (_c_int8*16)(*list(guid.bytes))
-        if fpga_properties_set_guid(fpga_properties, c_guid):
+        if fpga_properties_set_guid(self._fpga_properties, c_guid):
             raise RuntimeError("Unable to set GUID")
 
         fpga_enumerate = self._fpga_library.fpgaEnumerate
@@ -127,7 +142,7 @@ class FpgaDriver(_FpgaDriverBase):
         fpga_enumerate.restype = _c_int
         afc_token = _c_void_p()
         num_matches = _c_uint32(0)
-        if fpga_enumerate(_byref(fpga_properties), 1, _byref(afc_token), 1, _byref(num_matches)):
+        if fpga_enumerate(_byref(self._fpga_properties), 1, _byref(afc_token), 1, _byref(num_matches)):
             raise RuntimeError("Unable to enumerate AFCs")
         if num_matches.value < 1:
             raise RuntimeError("AFC not found")
@@ -143,7 +158,6 @@ class FpgaDriver(_FpgaDriverBase):
         fpga_map_mmio.restype = _c_int
         if fpga_map_mmio(self._fpga_handle, 0, None):
             raise RuntimeError("Unable to map MMIO")
-        print('MMIO mapped')
 
     def _get_read_register_callback(self):
         """
@@ -164,13 +178,12 @@ class FpgaDriver(_FpgaDriverBase):
             Args:
                 register_offset (int): Offset
                 returned_data (int pointer): Return data.
-                driver (accelize_drm.fpga_drivers._aws_f1.FpgaDriver):
-                    Keep a reference to driver.
+                driver: Keep a reference to driver.
             """
             with driver._fpga_read_register_lock():
                 return driver._fpga_read_register(
                     driver._fpga_handle, 0,
-                    driver._drm_ctrl_base_addr + register_offset * 4,
+                    register_offset << 2,
                     returned_data)
             return -1
 
@@ -195,13 +208,12 @@ class FpgaDriver(_FpgaDriverBase):
             Args:
                 register_offset (int): Offset
                 data_to_write (int): Data to write.
-                driver (accelize_drm.fpga_drivers._aws_f1.FpgaDriver):
-                    Keep a reference to driver.
+                driver: Keep a reference to driver.
             """
             with driver._fpga_write_register_lock():
                 return driver._fpga_write_register(
                     driver._fpga_handle, 0,
-                    driver._drm_ctrl_base_addr + register_offset * 4,
+                    register_offset << 2,
                     data_to_write)
 
         return write_register

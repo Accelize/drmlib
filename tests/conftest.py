@@ -568,11 +568,15 @@ def accelize_drm(pytestconfig):
         base_addr_list = []
         base_address = pytestconfig.getoption("activator_base_address")
         while True:
-            val = driver.read_register(base_address + INC_EVENT_REG_OFFSET)
-            if val != 0x600DC0DE:
+            try:
+                val = driver.read_register(base_address + INC_EVENT_REG_OFFSET)
+            except RuntimeError as e:
                 break
-            base_addr_list.append(base_address)
-            base_address += 0x10000
+            else:
+                if val != 0x600DC0DE:
+                    break
+                base_addr_list.append(base_address)
+                base_address += 0x10000
         fpga_activators.append(ActivatorsInFPGA(driver, base_addr_list))
         if len(base_addr_list) == 0:
             raise IOError('No activator found on slot #%d' % driver._fpga_slot_id)
@@ -603,9 +607,15 @@ def accelize_drm(pytestconfig):
         else:
            return verbosity
 
+    # Detect available method to detect DRM frequency
+    try:
+        isFreqMethod1 = fpga_driver[0].read_register(drm_ctrl_base_addr + 0xFFF8) == 0x60DC0DE0
+    except:
+        isFreqMethod1 = False
+
     # Store some values for access in tests
     import accelize_drm as _accelize_drm
-    _accelize_drm.pytest_new_freq_method_supported = fpga_driver[0].read_register(drm_ctrl_base_addr + 0xFFF8) == 0x60DC0DE0
+    _accelize_drm.pytest_new_freq_method_supported = isFreqMethod1
     _accelize_drm.pytest_proxy_debug = pytestconfig.getoption("proxy_debug")
     _accelize_drm.pytest_server = pytestconfig.getoption("server")
     _accelize_drm.pytest_build_environment = build_environment

@@ -111,7 +111,7 @@ class FpgaDriverBase:
     @property
     def read_register_callback(self):
         """
-        Read register callback to pass to "accelize_drm.DrmManager".
+        Read DRM register callback to pass to "accelize_drm.DrmManager".
 
         This method is not intended to be used directly,
         se "read_register" method for direct call.
@@ -119,7 +119,8 @@ class FpgaDriverBase:
         Returns:
             function: Callback
         """
-        return self._read_register_callback
+        return lambda register_offset, returned_data, driver=self: self._read_register_callback(
+                self._drm_ctrl_base_addr + register_offset, returned_data, driver)
 
     def write_register(self, register_offset, register_value):
         """
@@ -133,7 +134,8 @@ class FpgaDriverBase:
             register_offset (int): Register offset.
             register_value (int): 32 bits register value to write.
         """
-        if self.write_register_callback(register_offset, register_value):
+        c_register_value = _c_uint32(register_value)
+        if self._write_register_callback(register_offset, c_register_value):
             raise RuntimeError('Failed to write register at offset %08X' % register_offset)
 
     @property
@@ -147,7 +149,8 @@ class FpgaDriverBase:
         Returns:
             function: Callback
         """
-        return self._write_register_callback
+        return lambda register_offset, data_to_write, driver=self: self._write_register_callback(
+                self._drm_ctrl_base_addr + register_offset, data_to_write, driver)
 
     def clear_fpga(self):
         """
