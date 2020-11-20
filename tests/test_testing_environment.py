@@ -146,8 +146,6 @@ def test_fpga_drivers_base():
     assert driver._drm_ctrl_base_addr == base_address
     assert driver.fpga_image is None
     assert driver._fpga_library == library
-    assert driver.read_register_callback == Fpga.read_register
-    assert driver.write_register_callback == Fpga.write_register
     assert Fpga.fpga_image is None
     assert Fpga.initialized
 

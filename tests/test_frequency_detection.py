@@ -204,7 +204,10 @@ def test_drm_manager_frequency_detection_method2(accelize_drm, conf_json, cred_j
     async_cb = async_handler.create()
 
     # Program FPGA with HDK 3.x.x (with frequency detection method 2)
-    hdk = list(filter(lambda x: x.startswith('3.'), refdesign.hdk_versions))[-1]
+    hdk = list(filter(lambda x: x.startswith('3.'), refdesign.hdk_versions))
+    if len(hdk) == 0:
+        pytest.skip("No HDK in v3.x found: test is skipped")
+    hdk = hdk[-1]
     assert hdk.startswith('3.')
     image_id = refdesign.get_image_id(hdk)
     try:

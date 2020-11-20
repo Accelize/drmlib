@@ -134,8 +134,7 @@ class FpgaDriverBase:
             register_offset (int): Register offset.
             register_value (int): 32 bits register value to write.
         """
-        c_register_value = _c_uint32(register_value)
-        if self._write_register_callback(register_offset, c_register_value):
+        if self._write_register_callback(register_offset, register_value):
             raise RuntimeError('Failed to write register at offset %08X' % register_offset)
 
     @property
