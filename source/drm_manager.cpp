@@ -616,7 +616,7 @@ protected:
         if ( (uint32_t)index >= rwData.size() )
             Unreachable( "Index {} overflows the Mailbox memory; max index is {}. ", index, rwData.size()-1 ); //LCOV_EXCL_LINE
         if ( index + nb_elements > rwData.size() )
-            Unreachable( "Trying to read out of Mailbox memory space; size is {}", rwData.size() ); //LCOV_EXCL_LINE
+            Unreachable( "Trying to read out of Mailbox memory space; size is {}. ", rwData.size() ); //LCOV_EXCL_LINE
 
         auto first = rwData.cbegin() + index;
         auto last = rwData.cbegin() + index + nb_elements;
@@ -643,7 +643,7 @@ protected:
         if ( (uint32_t)index >= rwData.size() )
             Unreachable( "Index {} overflows the Mailbox memory; max index is {}. ", index, rwData.size()-1 ); //LCOV_EXCL_LINE
         if ( index + nb_elements > rwData.size() )
-            Unreachable( "Trying to read out of Mailbox memory space; size is {}", rwData.size() ); //LCOV_EXCL_LINE
+            Unreachable( "Trying to read out of Mailbox memory space; size is {}. ", rwData.size() ); //LCOV_EXCL_LINE
 
         auto first = rwData.cbegin() + index;
         auto last = rwData.cbegin() + index + nb_elements;
@@ -1468,11 +1468,11 @@ protected:
             Unreachable( "DRM Controller cannot be in both Node-Locked and Metering/Floating license modes. " ); //LCOV_EXCL_LINE
         if ( !isNodeLockedMode() ) {
             if ( !is_metered )
-                Unreachable( "DRM Controller failed to switch to Metering license mode" ); //LCOV_EXCL_LINE
+                Unreachable( "DRM Controller failed to switch to Metering license mode. " ); //LCOV_EXCL_LINE
             Debug( "DRM Controller is in Metering license mode" );
         } else {
             if ( !is_nodelocked )
-                Unreachable( "DRM Controller failed to switch to Node-Locked license mode" ); //LCOV_EXCL_LINE
+                Unreachable( "DRM Controller failed to switch to Node-Locked license mode. " ); //LCOV_EXCL_LINE
             Debug( "DRM Controller is in Node-Locked license mode" );
         }
         Debug( "Provisioned license #{} for session {} on DRM controller", mLicenseCounter, mSessionID );
@@ -1561,7 +1561,7 @@ protected:
         // Check session ID
         checkSessionIDFromDRM( request_json );
         if ( request_json["meteringFile"].empty() )
-            Unreachable( "Received an empty metering file from DRM Controller" );  //LCOV_EXCL_LINE
+            Unreachable( "Received an empty metering file from DRM Controller. " );  //LCOV_EXCL_LINE
         // Compute retry period
         TClock::time_point retry_deadline = TClock::now() + std::chrono::milliseconds( retry_timeout_ms );
         // Post next data to server
@@ -1993,7 +1993,7 @@ protected:
             Debug( "Acquired metering access mutex from startSession" );
 
             if ( !isReadyForNewLicense() )
-                Unreachable( "To start a new session the DRM Controller shall be ready to accept a new license" ); //LCOV_EXCL_LINE
+                Unreachable( "To start a new session the DRM Controller shall be ready to accept a new license. " ); //LCOV_EXCL_LINE
 
             mLicenseCounter = 0;
 

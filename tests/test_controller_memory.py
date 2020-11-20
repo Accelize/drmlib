@@ -191,7 +191,8 @@ def test_drm_manager_bist(accelize_drm, conf_json, cred_json, async_handler):
     # Test read callback error
     def my_wrong_read_callback(register_offset, returned_data):
         global page
-        if page == 5 and register_offset != 0:
+        if page == 5 and register_offset > 0x4:
+            returned_data = 0
             return 0
         return driver.read_register_callback(register_offset, returned_data, driver)
 
