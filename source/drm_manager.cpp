@@ -721,7 +721,7 @@ protected:
         std::lock_guard<std::recursive_mutex> lock( mDrmControllerMutex );
         int ret = f_read_register( address, &value );
         if ( ret )
-            Error( "Error in read register callback, errcode = {}: failed to read address {:x}", ret, address );
+            Error( "Error in read register callback, errcode = {}: failed to read address 0x{:x}", ret, address );
         else
             Debug2( "Read DRM Ctrl address 0x{:x} = 0x{:08x}", address, value );
         return ret;
@@ -735,7 +735,7 @@ protected:
         std::lock_guard<std::recursive_mutex> lock( mDrmControllerMutex );
         int ret = f_write_register( address, value );
         if ( ret )
-            Error( "Error in write register callback, errcode = {}: failed to write {} to address {:x}", ret, value, address );
+            Error( "Error in write register callback, errcode = {}: failed to write {} to address 0x{:x}", ret, value, address );
         else
             Debug2( "Wrote DRM Ctrl address 0x{:x} = 0x{:08x}", address, value );
         return ret;

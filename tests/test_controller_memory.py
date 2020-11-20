@@ -6,6 +6,8 @@ import pytest
 from re import search, IGNORECASE
 
 
+page = 0
+
 @pytest.mark.minimum
 def test_wrong_drm_controller_address(accelize_drm, conf_json, cred_json, async_handler):
     """Test when a wrong DRM Controller offset is given"""
@@ -188,16 +190,23 @@ def test_drm_manager_bist(accelize_drm, conf_json, cred_json, async_handler):
 
     # Test read callback error
     def my_wrong_read_callback(register_offset, returned_data):
-        addr = register_offset
-        if register_offset > 0 and register_offset <= 0x40:
-            addr += 0x4
-        return driver.read_register_callback(addr, returned_data, driver)
+        global page
+        if page == 5 and register_offset != 0:
+            return 0
+        return driver.read_register_callback(register_offset, returned_data, driver)
+
+    def my_good_write_callback(register_offset, data_to_write):
+        global page
+        if register_offset == 0:
+            page = data_to_write
+        return driver.write_register_callback(register_offset, data_to_write, driver)
+
     with pytest.raises(accelize_drm.exceptions.DRMBadArg) as excinfo:
         drm_manager = accelize_drm.DrmManager(
             conf_json.path,
             cred_json.path,
             my_wrong_read_callback,
-            driver.write_register_callback,
+            my_good_write_callback,
             async_cb.callback
         )
     assert 'DRM Communication Self-Test 2 failed' in str(excinfo.value)
@@ -207,7 +216,13 @@ def test_drm_manager_bist(accelize_drm, conf_json, cred_json, async_handler):
 
     # Test write callback error
     def my_wrong_write_callback(register_offset, data_to_write):
-        return driver.write_register_callback(register_offset*2, data_to_write, driver)
+        global page
+        if register_offset == 0:
+            page = data_to_write
+        if page == 5 and register_offset != 0:
+            return 0
+        return driver.write_register_callback(register_offset, data_to_write, driver)
+
     with pytest.raises(accelize_drm.exceptions.DRMBadArg) as excinfo:
         drm_manager = accelize_drm.DrmManager(
             conf_json.path,
