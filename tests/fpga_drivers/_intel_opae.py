@@ -30,6 +30,7 @@ class FpgaDriver(_FpgaDriverBase):
         log_dir (path-like object): Unused with this driver.
     """
     _name = _match(r'_(.+)\.py', _basename(__file__)).group(1)
+    _initialized = False
 
     @staticmethod
     def _get_driver():
@@ -51,6 +52,11 @@ class FpgaDriver(_FpgaDriverBase):
         return _Lock
 
     def __del__(self):
+        self._uninit_fpga()
+
+    def _uninit_fpga(self):
+        if not self._initialized:
+            return
         # Unmap MMIO space
         fpga_unmap_mmio = self._fpga_library.fpgaUnmapMMIO
         fpga_unmap_mmio.argtypes = (_c_void_p, _c_uint32)
@@ -60,17 +66,19 @@ class FpgaDriver(_FpgaDriverBase):
 
         # Release accelerator
         fpga_close = self._fpga_library.fpgaClose
-        fpga_close.argtypes = (_c_void_p)
+        fpga_close.argtypes = (_c_void_p,)
         fpga_close.restype = _c_int
         if fpga_close(self._fpga_handle):
             raise RuntimeError("Unable to close AFC")
 
         # Destroy properties object
         fpga_destroy_properties = self._fpga_library.fpgaDestroyProperties
-        fpga_destroy_properties.argtypes = (_POINTER(_c_void_p))
+        fpga_destroy_properties.argtypes = (_POINTER(_c_void_p),)
         fpga_destroy_properties.restype = _c_int
         if fpga_destroy_properties(_byref(self._fpga_properties)):
             raise RuntimeError("Unable to destroy properties object")
+
+        self._initialized = False
 
     def _clear_fpga(self):
         """
@@ -85,6 +93,7 @@ class FpgaDriver(_FpgaDriverBase):
         Args:
             fpga_image (str): FPGA image.
         """
+        self._uninit_fpga()
         # Get FPGA Boards Info
         pci_info = _run("lspci | grep accel", shell=True,
             stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
@@ -97,6 +106,7 @@ class FpgaDriver(_FpgaDriverBase):
             stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
         if program_fpga.returncode:
             raise RuntimeError(program_fpga.stdout)
+        self._init_fpga()
 
     def _reset_fpga(self):
         """
@@ -115,6 +125,7 @@ class FpgaDriver(_FpgaDriverBase):
         """
         self._fpga_handle = _c_void_p(None)
         self._fpga_properties = _c_void_p(None)
+        self._initialized = True
 
         fpga_get_properties = self._fpga_library.fpgaGetProperties
         fpga_get_properties.argtypes = (_c_void_p, _POINTER(_c_void_p))
