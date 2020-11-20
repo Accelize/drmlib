@@ -145,7 +145,7 @@ class FpgaDriver(_FpgaDriverBase):
             with driver._fpga_read_register_lock():
                 return driver._fpga_read_register(
                     driver._fpga_handle,
-                    driver._drm_ctrl_base_addr + register_offset,
+                    register_offset,
                     returned_data)
 
         return read_register
@@ -179,7 +179,7 @@ class FpgaDriver(_FpgaDriverBase):
             with driver._fpga_write_register_lock():
                 return driver._fpga_write_register(
                     driver._fpga_handle,
-                    driver._drm_ctrl_base_addr + register_offset,
+                    register_offset,
                     data_to_write)
 
         return write_register
