@@ -198,6 +198,9 @@ def pytest_addoption(parser):
               'The other activators shall be separated by an address gap of '
               '0x10000'))
     parser.addoption(
+        "--activator_address_range", action="store", default=0x10000, type=int,
+        help='Specify the address range of an activator. ')
+    parser.addoption(
         "--params", action="store", default=None,
         help='Specify a list of key=value pairs separated by a coma used '
              'for one or multiple tests: '
@@ -219,8 +222,9 @@ def pytest_runtest_setup(item):
     elif item.config.getoption("integration") and not markers:
         pytest.skip("Run only integration tests.")
 
-    # Check endurance tests
     m_option = item.config.getoption('-m')
+
+    # Check endurance tests
     if search(r'\bendurance\b', m_option) and not search(r'\nnot\n\s+\bendurance\b', m_option):
         skip_endurance = False
     else:
@@ -230,7 +234,6 @@ def pytest_runtest_setup(item):
         pytest.skip("Don't run endurance tests.")
 
     # Check lgdn tests
-    m_option = item.config.getoption('-m')
     if search(r'\blgdn\b', m_option) and not search(r'\nnot\n\s+\blgdn\b', m_option):
         skip_lgdn = False
     else:
@@ -243,15 +246,17 @@ def pytest_runtest_setup(item):
     markers = tuple(item.iter_markers(name='aws'))
     if '${AWS}' == 'OFF' and markers:
         pytest.skip("Don't run C/C++ function tests.")
-    # Skip 'security' test if not explicitly marked
+
     for marker in item.iter_markers():
+        # Skip 'security' test if not explicitly marked
         if 'security' == marker.name and 'security' not in item.config.option.markexpr:
             pytest.skip('"security" marker not selected')
-
-    # Skip 'long_run' test if not explicitly marked
-    for marker in item.iter_markers():
+        # Skip 'long_run' test if not explicitly marked
         if 'long_run' == marker.name and 'long_run' not in item.config.option.markexpr:
             pytest.skip('"long_run" marker not selected')
+        # Skip 'skip_sudo' test if not explicitly marked
+        if 'skip_sudo' == marker.name and 'skip_sudo' in item.config.option.markexpr:
+            pytest.skip('Skip test requiring sudo priviledge')
 
 
 class SingleActivator:
@@ -563,6 +568,7 @@ def accelize_drm(pytestconfig):
             raise IOError("Failed to load driver on slot %d" % slot_id)
 
     # Define Activator access per slot
+    activator_address_range = pytestconfig.getoption("activator_address_range")
     fpga_activators = list()
     for driver in fpga_driver:
         base_addr_list = []
@@ -576,7 +582,7 @@ def accelize_drm(pytestconfig):
                 if val != 0x600DC0DE:
                     break
                 base_addr_list.append(base_address)
-                base_address += 0x10000
+                base_address += activator_address_range
         fpga_activators.append(ActivatorsInFPGA(driver, base_addr_list))
         if len(base_addr_list) == 0:
             raise IOError('No activator found on slot #%d' % driver._fpga_slot_id)

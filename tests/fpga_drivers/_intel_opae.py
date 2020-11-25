@@ -54,75 +54,18 @@ class FpgaDriver(_FpgaDriverBase):
     def __del__(self):
         self._uninit_fpga()
 
-    def _uninit_fpga(self):
-        if not self._initialized:
-            return
-        # Unmap MMIO space
-        fpga_unmap_mmio = self._fpga_library.fpgaUnmapMMIO
-        fpga_unmap_mmio.argtypes = (_c_void_p, _c_uint32)
-        fpga_unmap_mmio.restype = _c_int
-        if fpga_unmap_mmio(self._fpga_handle, 0):
-            raise RuntimeError("Unable to unmap MMIO space")
-
-        # Release accelerator
-        fpga_close = self._fpga_library.fpgaClose
-        fpga_close.argtypes = (_c_void_p,)
-        fpga_close.restype = _c_int
-        if fpga_close(self._fpga_handle):
-            raise RuntimeError("Unable to close AFC")
-
-        # Destroy properties object
-        fpga_destroy_properties = self._fpga_library.fpgaDestroyProperties
-        fpga_destroy_properties.argtypes = (_POINTER(_c_void_p),)
-        fpga_destroy_properties.restype = _c_int
-        if fpga_destroy_properties(_byref(self._fpga_properties)):
-            raise RuntimeError("Unable to destroy properties object")
-
-        self._initialized = False
-
     def _clear_fpga(self):
         """
         Clear FPGA
         """
         pass
 
-    def _program_fpga(self, fpga_image):
-        """
-        Program the FPGA with the specified image.
-
-        Args:
-            fpga_image (str): FPGA image.
-        """
-        self._uninit_fpga()
-        # Get FPGA Boards Info
-        pci_info = _run("lspci | grep accel", shell=True,
-            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
-        if pci_info.returncode:
-            raise RuntimeError(pci_info.stdout)
-        pci_info = pci_info.stdout.strip().split('\n')
-        pci_slot = _match(r'([^:]+):.*', pci_info[self._fpga_slot_id]).group(1)
-        # Prog FPGA Board
-        program_fpga = _run('fpgaconf -B 0x%s %s' % (pci_slot, fpga_image), shell=True,
-            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
-        if program_fpga.returncode:
-            raise RuntimeError(program_fpga.stdout)
-        self._init_fpga()
-
-    def _reset_fpga(self):
-        """
-        Reset FPGA including FPGA image.
-        """
-        fpga_reset = self._fpga_library.fpgaReset
-        fpga_reset.argtypes = (_c_void_p)
-        fpga_reset.restype = _c_int
-        if self._fpga_handle:
-            if fpga_reset(self._fpga_handle):
-                raise RuntimeError("Unable to reset AFC")
-
     def _init_fpga(self):
         """
         Initialize FPGA handle with driver library.
         """
+        if self._initialized:
+            return
         self._fpga_handle = _c_void_p(None)
         self._fpga_properties = _c_void_p(None)
         self._initialized = True
@@ -161,14 +104,75 @@ class FpgaDriver(_FpgaDriverBase):
         fpga_open = self._fpga_library.fpgaOpen
         fpga_open.argtypes = (_c_void_p, _POINTER(_c_void_p), _c_int)
         fpga_open.restype = _c_int
-        if fpga_open(afc_token, _byref(self._fpga_handle), 0):
-            raise RuntimeError("Unable to open AFC")
+        ret = fpga_open(afc_token, _byref(self._fpga_handle), 0)
+        if ret:
+            raise RuntimeError("Unable to open AFC (error code=%d)"% ret)
 
         fpga_map_mmio = self._fpga_library.fpgaMapMMIO
         fpga_map_mmio.argtypes = (_c_void_p, _c_uint32, _POINTER(_POINTER(_c_uint64)))
         fpga_map_mmio.restype = _c_int
         if fpga_map_mmio(self._fpga_handle, 0, None):
             raise RuntimeError("Unable to map MMIO")
+
+    def _uninit_fpga(self):
+        if not self._initialized:
+            return
+        # Unmap MMIO space
+        fpga_unmap_mmio = self._fpga_library.fpgaUnmapMMIO
+        fpga_unmap_mmio.argtypes = (_c_void_p, _c_uint32)
+        fpga_unmap_mmio.restype = _c_int
+        if fpga_unmap_mmio(self._fpga_handle, 0):
+            raise RuntimeError("Unable to unmap MMIO space")
+
+        # Release accelerator
+        fpga_close = self._fpga_library.fpgaClose
+        fpga_close.argtypes = (_c_void_p,)
+        fpga_close.restype = _c_int
+        ret = fpga_close(self._fpga_handle)
+        if ret:
+            raise RuntimeError("Unable to close AFC (error code=%d)" % ret)
+
+        # Destroy properties object
+        fpga_destroy_properties = self._fpga_library.fpgaDestroyProperties
+        fpga_destroy_properties.argtypes = (_POINTER(_c_void_p),)
+        fpga_destroy_properties.restype = _c_int
+        if fpga_destroy_properties(_byref(self._fpga_properties)):
+            raise RuntimeError("Unable to destroy properties object")
+
+        self._initialized = False
+
+    def _program_fpga(self, fpga_image):
+        """
+        Program the FPGA with the specified image.
+
+        Args:
+            fpga_image (str): FPGA image.
+        """
+        self._uninit_fpga()
+        # Get FPGA Boards Info
+        pci_info = _run("lspci | grep accel", shell=True,
+            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
+        if pci_info.returncode:
+            raise RuntimeError(pci_info.stdout)
+        pci_info = pci_info.stdout.strip().split('\n')
+        pci_slot = _match(r'([^:]+):.*', pci_info[self._fpga_slot_id]).group(1)
+        # Prog FPGA Board
+        program_fpga = _run('fpgaconf -B 0x%s %s' % (pci_slot, fpga_image), shell=True,
+            stderr=_STDOUT, stdout=_PIPE, universal_newlines=True, check=False)
+        if program_fpga.returncode:
+            raise RuntimeError(program_fpga.stdout)
+        self._init_fpga()
+
+    def _reset_fpga(self):
+        """
+        Reset FPGA including FPGA image.
+        """
+        fpga_reset = self._fpga_library.fpgaReset
+        fpga_reset.argtypes = (_c_void_p)
+        fpga_reset.restype = _c_int
+        if self._fpga_handle:
+            if fpga_reset(self._fpga_handle):
+                raise RuntimeError("Unable to reset AFC")
 
     def _get_read_register_callback(self):
         """

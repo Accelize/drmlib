@@ -7,6 +7,7 @@ from os import remove, getpid, environ
 from os.path import isfile, realpath
 from re import match, search, finditer, IGNORECASE
 from time import sleep, time
+from datetime import datetime
 
 from tests.conftest import wait_func_true
 
@@ -70,7 +71,8 @@ _PARAM_LIST = ('license_type',
                'trng_status',
                'num_license_loaded',
                'derived_product',
-               'ws_connection_timeout'
+               'ws_connection_timeout',
+               'license_time_left'
 )
 
 
@@ -1254,6 +1256,28 @@ def test_parameter_key_modification_with_get_set(accelize_drm, conf_json, cred_j
     assert drm_manager.get('ws_connection_timeout') == ref_timeout
     async_cb.assert_NoError()
     print("Test parameter 'ws_connection_timeout': PASS")
+
+
+    # Test parameter: license_time_left
+    async_cb.reset()
+    conf_json.reset()
+    drm_manager = accelize_drm.DrmManager(
+        conf_json.path,
+        cred_json.path,
+        driver.read_register_callback,
+        driver.write_register_callback,
+        async_cb.callback
+    )
+    ref_timeout = drm_manager.get('license_time_left')
+    drm_manager.activate()
+    start = datetime.now()
+    wait_func_true(lambda: drm_manager.get('num_license_loaded') == 2, 10)
+    t1 = drm_manager.get('license_time_left')
+    drm_manager.deactivate()
+    t2 = drm_manager.get('license_time_left')
+
+    async_cb.assert_NoError()
+    print("Test parameter 'license_time_left': PASS")
 
 
 def test_configuration_file_with_bad_authentication(accelize_drm, conf_json, cred_json,

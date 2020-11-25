@@ -1455,7 +1455,7 @@ protected:
                 break;
             }
             Debug2( "License #{} not transmitted yet after {:f} ms", mLicenseCounter, mseconds );
-            usleep(50);
+            usleep(100);
         }
         if ( !activationCodesTransmitted ) {
             Throw( DRM_CtlrError, "DRM Controller could not transmit Licence #{} to activators after {:f} ms. ", mLicenseCounter, mseconds ); //LCOV_EXCL_LINE
@@ -2615,6 +2615,11 @@ public:
                         int32_t con_timeout_sec = (int32_t)(getDrmWSClient().getConnectionTimeoutMS() / 1000);
                         json_value[key_str] = con_timeout_sec;
                         Debug( "Get value of parameter '{}' (ID={}): {}", key_str, key_id, con_timeout_sec );
+                        break;
+                    }
+                    case ParameterKey::license_time_left: {
+                        json_value[key_str] = mExpirationTime;
+                        Debug( "Get value of parameter '{}' (ID={}): {}", key_str, key_id, mExpirationTime );
                         break;
                     }
                     case ParameterKey::ParameterKeyCount: {

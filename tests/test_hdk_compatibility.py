@@ -15,7 +15,7 @@ def test_hdk_stability_on_programming(accelize_drm, conf_json, cred_json, async_
     async_cb.reset()
     drm_manager = None
 
-    nb_reset = 10
+    nb_reset = 5
     for i in range(nb_reset):
         # Program FPGA with lastest HDK per major number
         driver.program_fpga(image_id)
@@ -70,7 +70,6 @@ def test_uncompatibilities(accelize_drm, conf_json, cred_json, async_handler):
         # Then test all HDK versions that are not compatible
         current_num = float(match(r'^(\d+.\d+)', hdk_version).group(1))
         refdesignByMajor = ((float(match(r'^(\d+.\d+)', x).group(1)), x) for x in refdesign.hdk_versions)
-
         tested = False
 
         for num, versions in groupby(refdesignByMajor, lambda x: x[0]):
@@ -100,7 +99,9 @@ def test_uncompatibilities(accelize_drm, conf_json, cred_json, async_handler):
             if search(r'This DRM Library version \S+ is not compatible with the DRM HDK version', str(excinfo.value), IGNORECASE):
                 hit = True
             assert hit
-        assert tested
+
+        if not tested:
+            pytest.skip("No uncompatible HDK found")
 
     finally:
         if drm_manager:
@@ -168,7 +169,8 @@ def test_compatibilities(accelize_drm, conf_json, cred_json, async_handler):
             drm_manager.deactivate()
             assert not drm_manager.get('license_status')
             async_cb.assert_NoError()
-        assert tested
+        if not tested:
+            pytest.skip("No uncompatible HDK found")
     finally:
         if drm_manager:
             del drm_manager
