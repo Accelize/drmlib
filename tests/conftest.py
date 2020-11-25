@@ -962,7 +962,7 @@ def wait_func_true(func, timeout=None, sleep_time=1):
         sleep(sleep_time)
 
 
-def wait_deadline(start_time, duration):
+def wait_deadline(start_time, duration=0):
     """
     Wait until endtime is hit
 

@@ -7,7 +7,8 @@ from os import remove, getpid, environ
 from os.path import isfile, realpath
 from re import match, search, finditer, IGNORECASE
 from time import sleep, time
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil import parser
 
 from tests.conftest import wait_func_true
 
@@ -1268,14 +1269,21 @@ def test_parameter_key_modification_with_get_set(accelize_drm, conf_json, cred_j
         driver.write_register_callback,
         async_cb.callback
     )
-    ref_timeout = drm_manager.get('license_time_left')
+    t0 = drm_manager.get('license_time_left')
     drm_manager.activate()
     start = datetime.now()
+    lic_duration = drm_manager.get('license_duration')
     wait_func_true(lambda: drm_manager.get('num_license_loaded') == 2, 10)
     t1 = drm_manager.get('license_time_left')
-    drm_manager.deactivate()
+    drm_manager.deactivate(True)
     t2 = drm_manager.get('license_time_left')
-
+    drm_manager.deactivate(False)
+    t3 = drm_manager.get('license_time_left')
+    assert t3 == t0
+    assert t2 == t1
+    dt1 = parser.parse(t1)
+    delta = start + timedelta(seconds=2*lic_duration) - dt1
+    assert int(delta.total_seconds()) == 0
     async_cb.assert_NoError()
     print("Test parameter 'license_time_left': PASS")
 

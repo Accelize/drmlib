@@ -6,6 +6,7 @@ import pytest
 from time import sleep
 from random import randint, choice
 from datetime import datetime, timedelta
+from dateutil import parser
 from re import search, findall
 from os.path import realpath, isfile
 from os import remove
@@ -315,14 +316,12 @@ def test_metered_pause_resume_long_time(accelize_drm, conf_json, cred_json, asyn
         activators.autotest(is_activated=False)
         async_cb.assert_NoError()
         drm_manager.activate()
-        start = datetime.now()
         assert drm_manager.get('metered_data') == 0
         assert drm_manager.get('session_status')
         assert drm_manager.get('license_status')
         session_id = drm_manager.get('session_id')
         assert len(session_id) > 0
         lic_duration = drm_manager.get('license_duration')
-        wait_numbers = [lic_duration*2-2,lic_duration*2+2]
         activators.autotest(is_activated=True)
         for i in range(nb_pause_resume):
             new_coins = randint(1, 100)
@@ -330,21 +329,20 @@ def test_metered_pause_resume_long_time(accelize_drm, conf_json, cred_json, asyn
             activators[0].check_coin(drm_manager.get('metered_data'))
             wait_func_true(lambda: drm_manager.get('num_license_loaded') == 2, 10)
             drm_manager.deactivate(True)
+            lic_exp_time = parser.parse(drm_manager.get('license_time_left'))
             async_cb.assert_NoError()
             assert drm_manager.get('session_status')
             assert drm_manager.get('license_status')
             assert drm_manager.get('session_id') == session_id
             # Wait randomly at the limit of the expiration
-            random_wait = choice(wait_numbers)
-            wait_deadline(start, random_wait)
+            random_wait = choice([-2,2])
+            wait_deadline(start, timedelta(seconds=random_wait)
             drm_manager.activate(True)
-            if random_wait > lic_duration*2:
-                start = datetime.now()
+            if random_wait > 0:
                 assert drm_manager.get('session_id') != session_id
                 activators[0].reset_coin()
                 session_id = drm_manager.get('session_id')
             else:
-                start += timedelta(seconds=lic_duration)
                 assert drm_manager.get('session_id') == session_id, 'after loop #%d' % i
         assert drm_manager.get('session_status')
         assert drm_manager.get('session_id') == session_id

@@ -2618,8 +2618,9 @@ public:
                         break;
                     }
                     case ParameterKey::license_time_left: {
-                        json_value[key_str] = mExpirationTime;
-                        Debug( "Get value of parameter '{}' (ID={}): {}", key_str, key_id, mExpirationTime );
+                        std::string lic_expiration_time = time_t_to_string( steady_clock_to_time_t( mExpirationTime ) );
+                        json_value[key_str] = lic_expiration_time;
+                        Debug( "Get value of parameter '{}' (ID={}): {}", key_str, key_id, lic_expiration_time );
                         break;
                     }
                     case ParameterKey::ParameterKeyCount: {
