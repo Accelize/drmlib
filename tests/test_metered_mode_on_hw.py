@@ -336,7 +336,7 @@ def test_metered_pause_resume_long_time(accelize_drm, conf_json, cred_json, asyn
             assert drm_manager.get('session_id') == session_id
             # Wait randomly at the limit of the expiration
             random_wait = choice([-2,2])
-            wait_deadline(start, timedelta(seconds=random_wait)
+            wait_deadline(lic_exp_time, random_wait)
             drm_manager.activate(True)
             if random_wait > 0:
                 assert drm_manager.get('session_id') != session_id
