@@ -550,7 +550,6 @@ def test_drm_manager_get_and_set_bad_arguments(accelize_drm, conf_json, cred_jso
     print("Test when bad argument is given to set: PASS")
 
 
-@pytest.mark.aws
 def test_c_unittests(accelize_drm, exec_func):
     """Test errors when missing arguments are given to DRM Controller Constructor"""
     if 'aws' not in accelize_drm.pytest_fpga_driver_name:

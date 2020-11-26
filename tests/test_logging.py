@@ -467,9 +467,11 @@ def test_log_file_parameters_modifiability(accelize_drm, conf_json, cred_json, a
     remove(log_path)
 
 
-@pytest.mark.skip_sudo
 def test_log_file_error_on_directory_creation(accelize_drm, conf_json, cred_json, async_handler):
     """ Test an error occurred when log file directory does not exist and cannot be created """
+    if 'aws' not in accelize_drm.pytest_fpga_driver_name:
+        pytest.skip("Sudo priviledge are only supported on AWS.")
+
     from subprocess import check_call
     driver = accelize_drm.pytest_fpga_driver[0]
     async_cb = async_handler.create()

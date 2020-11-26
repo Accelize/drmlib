@@ -15,7 +15,7 @@ def test_normal_usage(accelize_drm, request, exec_func, live_server, tmpdir,
                       basic_log_file):
     """Check memory leak with valgrind"""
     if 'aws' not in accelize_drm.pytest_fpga_driver_name:
-        pytest.skip("C unit-tests are only supported with AWS driver.")
+        pytest.skip("Valgrind tests are only supported on AWS.")
 
     # Set initial context on the live server
     nb_running = 2
