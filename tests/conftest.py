@@ -242,11 +242,6 @@ def pytest_runtest_setup(item):
     if markers and skip_lgdn:
         pytest.skip("Don't run LGDN tests.")
 
-    # Check AWS execution
-    markers = tuple(item.iter_markers(name='aws'))
-    if '${AWS}' == 'OFF' and markers:
-        pytest.skip("Don't run C/C++ function tests.")
-
     for marker in item.iter_markers():
         # Skip 'security' test if not explicitly marked
         if 'security' == marker.name and 'security' not in item.config.option.markexpr:
@@ -254,9 +249,6 @@ def pytest_runtest_setup(item):
         # Skip 'long_run' test if not explicitly marked
         if 'long_run' == marker.name and 'long_run' not in item.config.option.markexpr:
             pytest.skip('"long_run" marker not selected')
-        # Skip 'skip_sudo' test if not explicitly marked
-        if 'skip_sudo' == marker.name and 'skip_sudo' in item.config.option.markexpr:
-            pytest.skip('Skip test requiring sudo priviledge')
 
 
 class SingleActivator:
