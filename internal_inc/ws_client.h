@@ -174,10 +174,10 @@ public:
               || res == CURLE_COULDNT_RESOLVE_HOST
               || res == CURLE_COULDNT_CONNECT
               || res == CURLE_OPERATION_TIMEDOUT ) {
-                Throw( DRM_WSMayRetry, "Failed to perform HTTP request to Accelize webservice ({}) : {}",
+                Throw( spdlog::level::debug, DRM_WSMayRetry, "Failed to perform HTTP request to Accelize webservice ({}) : {}",
                         curl_easy_strerror( res ), mErrBuff.data() );
             } else {
-                Throw( DRM_ExternFail, "Failed to perform HTTP request to Accelize webservice ({}) : {}",
+                Throw( spdlog::level::debug, DRM_ExternFail, "Failed to perform HTTP request to Accelize webservice ({}) : {}",
                         curl_easy_strerror( res ), mErrBuff.data() );
             }
         }

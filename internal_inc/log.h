@@ -50,6 +50,8 @@ namespace DRM {
 
     extern std::shared_ptr<spdlog::logger> sLogger;
 
+    #define SPDLOG_LOG(level, ...) SPDLOG_LOGGER_CALL( spdlog::default_logger_raw(), level, __VA_ARGS__ )
+
     #define Debug2(...) SPDLOG_TRACE( __VA_ARGS__ )
 
     #define Debug(...) SPDLOG_DEBUG( __VA_ARGS__ )
