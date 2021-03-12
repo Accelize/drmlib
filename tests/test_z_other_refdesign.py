@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime
 from os.path import join, dirname, realpath
 from random import choices
-from re import search
+from re import search, IGNORECASE
 import tests.conftest as conftest
 from tests.fpga_drivers import get_driver
 
@@ -147,7 +147,13 @@ def run_refdesign_test(pytestconfig, conf_json, cred_json, async_handler, log_fi
     execute_basic_test(drm_manager, activators)
     # Check result
     log_content = logfile.read()
-    assert search(r'calling', log_content)
+    # Check API calls
+    assert search(r"Calling Impl public constructor", log_content, IGNORECASE)
+    assert search(r"Calling 'activate' with 'resume_session_request'=false", log_content, IGNORECASE)
+    assert search(r"Calling 'deactivate' with 'pause_session_request'=true", log_content, IGNORECASE)
+    assert search(r"Calling 'activate' with 'resume_session_request'=true", log_content, IGNORECASE)
+    assert search(r"Calling 'deactivate' with 'pause_session_request'=false", log_content, IGNORECASE)
+    # Check DRM Controller frequencies
     drmclk_match = search(r'Frequency detection of drm_aclk counter after .+ => estimated frequency = (\d+) MHz', log_content)
     drmclk_freq_measure = int(drmclk_match.group(1))
     assert drmclk_freq_ref*0.9 < drmclk_freq_measure < drmclk_freq_ref*1.1

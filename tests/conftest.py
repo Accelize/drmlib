@@ -662,6 +662,37 @@ def accelize_drm(pytestconfig):
     return _accelize_drm
 
 
+class driver_factory:
+    def __init__
+
+@pytest.fixture(scope='function')
+def driver_factory(pytestconfig):
+    from tests.fpga_drivers import get_driver
+    # Get FPGA driver
+    fpga_driver_name = pytestconfig.getoption("fpga_driver")
+    fpga_driver_cls = get_driver(fpga_driver_name)
+    if pytestconfig.getoption('integration'):
+        # Integration tests requires 2 slots
+        fpga_slot_id = [0, 1]
+    elif environ.get('TOX_PARALLEL_ENV'):
+        # Define FPGA slot for Tox parallel execution
+        fpga_slot_id = [0 if backend == 'c' else 1]
+    else:
+        # Use user defined slot
+        fpga_slot_id = [pytestconfig.getoption("fpga_slot_id")]
+    fpga_driver = list()
+    for slot_id in fpga_slot_id:
+        try:
+            fpga_driver.append(
+                fpga_driver_cls( fpga_slot_id=slot_id,
+                    fpga_image=fpga_image,
+                    drm_ctrl_base_addr=drm_ctrl_base_addr,
+                    no_clear_fpga=no_clear_fpga
+                )
+            )
+        except:
+            raise IOError("Failed to load driver on slot %d" % slot_id)
+
 class _Json:
     """Json file"""
 
